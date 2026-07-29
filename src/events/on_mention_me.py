@@ -14,7 +14,7 @@ async def on_message(message) -> None:
     return
   for user in message.mentions:
     if user.id == settings.user_id:
-      member = await message.guild.fetch_member(settings.user_id)
+      member = message.guild.get_member(settings.user_id)
       if member and member.status in [Status.dnd, Status.invisible, Status.offline]:
         await message.channel.send(GIF_URL)
       break
