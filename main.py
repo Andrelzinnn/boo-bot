@@ -1,39 +1,21 @@
-import os
+from discord import Permissions, utils
 
-from discord import Intents, Permissions, utils
-from discord.ext import commands
-from dotenv import load_dotenv
+import src.events.on_mention_me
+from src.bot import bot
+from src.types.Env import settings
 
-load_dotenv()
-
-gif = "https://klipy.com/gifs/cat-hello-cat-peek"
-client_id = os.getenv("CLIENT_ID")
-token = os.getenv("TOKEN")
-user_id = int(os.getenv("USER_ID"))
-
-intents: Intents = Intents.default()
-intents.message_content = True
-
-bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready() -> None:
-    print("rodando")
+  print("Boo bot está online")
 
-@bot.event
-async def on_message(message):
-    if message.author == bot.user:
-      return
-
-    for user in message.mentions:
-      if user.id == user_id:
-        await message.channel.send(gif)
-
-if(__name__ == "__main__"):
-  if(token and client_id):
+if __name__ == "__main__":
+  if settings.client_id and settings.token:
     url = utils.oauth_url(
-        client_id=client_id,
-        permissions=Permissions(send_messages=True, attach_files=True)
-    )
+                client_id=settings.client_id,
+                permissions=Permissions(send_messages=True, attach_files=True)
+            )
     print(url)
-    bot.run(token)
+    bot.run(settings.token)
+  else:
+    print("client_id e token são necessários")
