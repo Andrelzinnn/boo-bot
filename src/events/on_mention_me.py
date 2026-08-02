@@ -12,7 +12,7 @@ async def on_message(message) -> None:
   if message.content.lower() == "violin" or message.content.lower() == "violino":
     await message.reply(VIOLIN_GIF_URL)
     return
-  if "yai" in message.content.lower():
+  if "yay" in message.content.lower():
     await message.reply(YAY_CAT_GIF_URL)
     return
   for user in message.mentions:
