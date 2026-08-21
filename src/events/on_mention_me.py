@@ -1,4 +1,4 @@
-from discord import Message, Status
+from discord import Message, Status, NotFound
 
 from src.bot import bot
 from src.config import GIF_URL, VIOLIN_GIF_URL, YAY_CAT_GIF_URL
@@ -25,6 +25,11 @@ async def on_message(message: Message) -> None:
   for user in message.mentions:
     if user.id == settings.user_id:
       member = message.guild.get_member(settings.user_id)
+      if member is None:
+        try:
+          member = await message.guild.fetch_member(settings.user_id)
+        except NotFound:
+          member = None
       if member and member.status in [Status.dnd, Status.invisible, Status.offline]:
         await message.channel.send(GIF_URL)
       break
