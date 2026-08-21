@@ -1,8 +1,8 @@
 from pathlib import Path
+from typing import ClassVar
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing_extensions import ClassVar
 
 
 class Settings(BaseSettings):
