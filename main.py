@@ -2,8 +2,9 @@ from discord import Permissions, utils
 
 import src.events.on_mention_me
 from src.bot import bot
-from src.types.Env import settings
+from src.config.settings import settings
 from src.utils.logger import logger
+
 
 @bot.event
 async def on_ready() -> None:

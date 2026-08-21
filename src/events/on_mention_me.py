@@ -1,9 +1,9 @@
 from discord import Message, NotFound, Status
 
 from src.bot import bot
-from src.config import GIF_URL, VIOLIN_GIF_URL, YAY_CAT_GIF_URL
-from src.misc.cooldown import is_on_cooldown
-from src.types.Env import settings
+from src.config.constants import GIF_URL, VIOLIN_GIF_URL, YAY_CAT_GIF_URL
+from src.config.settings import settings
+from src.utils.cooldown import is_on_cooldown
 
 
 @bot.event
@@ -27,9 +27,9 @@ async def on_message(message: Message) -> None:
         return
 
     for user in message.mentions:
-        if is_on_cooldown(message.channel.id):
-            return
         if user.id == settings.user_id:
+            if is_on_cooldown(message.channel.id):
+                return
             member = message.guild.get_member(settings.user_id)
             if member is None:
                 try:
