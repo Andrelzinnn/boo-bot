@@ -1,4 +1,4 @@
-from discord import Status
+from discord import Message, Status
 
 from src.bot import bot
 from src.config import GIF_URL, VIOLIN_GIF_URL, YAY_CAT_GIF_URL
@@ -6,7 +6,7 @@ from src.types.Env import settings
 
 
 @bot.event
-async def on_message(message) -> None:
+async def on_message(message: Message) -> None:
   if message.author == bot.user:
     return
   if message.content.lower() == "violin" or message.content.lower() == "violino":
