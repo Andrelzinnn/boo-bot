@@ -15,11 +15,11 @@ async def on_message(message: Message) -> None:
     return
 
   if message.content.lower() == "violin" or message.content.lower() == "violino":
-    await message.reply(VIOLIN_GIF_URL)
+    _ = await message.reply(VIOLIN_GIF_URL)
     return
 
   if "yay" in message.content.lower():
-    await message.reply(YAY_CAT_GIF_URL)
+    _ = await message.reply(YAY_CAT_GIF_URL)
     return
 
   for user in message.mentions:
@@ -31,5 +31,5 @@ async def on_message(message: Message) -> None:
         except NotFound:
           member = None
       if member and member.status in [Status.dnd, Status.invisible, Status.offline]:
-        await message.channel.send(GIF_URL)
+        _ = await message.channel.send(GIF_URL)
       break
