@@ -3,11 +3,11 @@ from discord import Permissions, utils
 import src.events.on_mention_me
 from src.bot import bot
 from src.types.Env import settings
-
+from src.utils.logger import logger
 
 @bot.event
 async def on_ready() -> None:
-    print("Boo bot está online")
+    logger.info("Boo bot está online")
 
 
 if __name__ == "__main__":
@@ -16,7 +16,7 @@ if __name__ == "__main__":
             client_id=settings.client_id,
             permissions=Permissions(send_messages=True, attach_files=True),
         )
-        print(url)
+        logger.info(url)
         bot.run(settings.token)
     else:
-        print("client_id e token são necessários")
+        logger.error("client_id e token são necessários")
