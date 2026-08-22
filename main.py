@@ -24,6 +24,9 @@ if __name__ == "__main__":
     logger.info(f"Link do convite: {url}")
     try:
         bot.run(settings.token)
+
+    except KeyboardInterrupt:
+        logger.info("Interrompido pelo usuário")
     except errors.PrivilegedIntentsRequired:
         logger.critical(
             "Privileged Intents não estão ativadas! "

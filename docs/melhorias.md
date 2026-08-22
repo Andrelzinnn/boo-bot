@@ -1,6 +1,6 @@
 # 📋 Relatório de Análise Técnica, Diagnóstico e Plano de Melhorias — Boo Bot
 
-Este documento cataloga, classifica e prioriza o **diagnóstico técnico**, o **histórico consolidado de melhorias aplicadas** e os **problemas identificados / oportunidades de evolução** no projeto **Boo Bot**, servindo como guia de referência técnica, estabilidade e arquitetura.
+Este documento cataloga, classifica e prioriza o **diagnóstico técnico**, o **histórico consolidado de melhorias aplicadas** e as **oportunidades de evolução técnica** no projeto **Boo Bot**, servindo como guia de referência técnica, boas práticas e arquitetura.
 
 ---
 
@@ -8,13 +8,13 @@ Este documento cataloga, classifica e prioriza o **diagnóstico técnico**, o **
 
 O **Boo Bot** é um bot para Discord em Python desenvolvido com a biblioteca `discord.py` (v2.x) e validação de ambiente tipada via `pydantic-settings`. 
 
-Nas iterações mais recentes, o projeto alcançou marcos fundamentais de estabilidade e saneamento:
-- **Tratamento de Exceções de Inicialização:** `main.py` agora captura explicitamente erros de `PrivilegedIntentsRequired` e `LoginFailure` com logs instrutivos.
-- **Saneamento do Git:** O arquivo `.gitignore` foi completamente reestruturado, eliminando regras duplicadas e desbloqueando a pasta `docs/`.
-- **Portabilidade de Scripts:** `init.sh` teve seu nome de variável corrigido para `BASE_DIR`.
-- **Refatoração de Menções e Cooldown:** O consumo precoce do cooldown foi desacoplado, o `break` foi reposicionado e exceções da API (`Forbidden`, `HTTPException`) foram protegidas com `try/except` e `logger`.
+Nas iterações mais recentes, a base de código atingiu um alto nível de maturidade operacional:
+- **Resiliência do Gateway e Intents:** `main.py` trata explicitamente `PrivilegedIntentsRequired`, `LoginFailure` e erros de conexão com logs instrutivos.
+- **Saneamento e Higiene do Repositório:** O `.gitignore` foi padronizado para projetos Python, o arquivo órfão `teste.py` foi eliminado e a variável `BASE_DIR` no `init.sh` foi corrigida.
+- **Lógica de Menções e Status de Ausência:** A lógica de detecção de ausência em `src/events/on_mention_me.py` foi ajustada para verificar `member.status not in [Status.online, Status.idle]`, garantindo que o cooldown seja consumido apenas quando a mensagem de ausência for efetivamente despachada.
+- **Limpeza de Sintaxe:** O bloco `else:` residual no ponto de entrada `main.py` foi removido.
 
-A presente reanálise identificou **dois novos pontos de atenção imediata** (um bloco `else` órfão em `main.py` e uma inversão lógica na condição de status em `on_mention_me.py`), além de estruturar as próximas etapas para Cogs, documentação e DevOps.
+Com os problemas críticos e bloqueadores de fluxo resolvidos, o foco do projeto transiciona para **arquitetura escalável (Cogs)**, **resiliência de comandos**, **DevOps** e **documentação**.
 
 ---
 
@@ -32,8 +32,10 @@ A presente reanálise identificou **dois novos pontos de atenção imediata** (u
 | **08** | Alerta de tipagem no `model_config` do Pydantic | ✅ **Resolvido** | `ffa3fa2` | Tipado explicitamente com `ClassVar[SettingsConfigDict]`. |
 | **09** | Arquivo órfão de 0 bytes `teste.py` | ✅ **Resolvido** | Limpeza do Git | Arquivo removido do controle de versão. |
 | **10** | `.gitignore` com duplicatas e bloqueio de `docs` | ✅ **Resolvido** | `3d6f4c2` / [.gitignore](file:///home/andrelzinn/.projects/boo-bot/.gitignore) | Reorganizado com padrões limpos de Python, removendo `docs` e duplicatas. |
-| **11** | Tratamento de exceções no `bot.run()` | ✅ **Resolvido** | `ef6f6cf` / [main.py:25-36](file:///home/andrelzinn/.projects/boo-bot/main.py#L25-L36) | Captura de `PrivilegedIntentsRequired`, `LoginFailure` e `Exception` com log crítico. |
-| **12** | Resiliência e logging no `on_mention_me.py` | ✅ **Resolvido** | `9265bc4` / [src/events/on_mention_me.py](file:///home/andrelzinn/.projects/boo-bot/src/events/on_mention_me.py) | Tratamento de `Forbidden`/`HTTPException`, escopo de `break` corrigido e logs adicionados. |
+| **11** | Tratamento de exceções no `bot.run()` | ✅ **Resolvido** | `ef6f6cf` / [main.py:27-36](file:///home/andrelzinn/.projects/boo-bot/main.py#L27-L36) | Captura de `PrivilegedIntentsRequired`, `LoginFailure` e `Exception` com log crítico. |
+| **12** | Remoção de bloco `else:` residual no `main.py` | ✅ **Resolvido** | `9d04d2e` / [main.py](file:///home/andrelzinn/.projects/boo-bot/main.py) | Removido `else` órfão no nível de inicialização do script. |
+| **13** | Resiliência e logging no `on_mention_me.py` | ✅ **Resolvido** | `9265bc4` / [src/events/on_mention_me.py](file:///home/andrelzinn/.projects/boo-bot/src/events/on_mention_me.py) | Tratamento de `Forbidden`/`HTTPException`, escopo de `break` corrigido e logs adicionados. |
+| **14** | Condição de ausência e consumo de cooldown | ✅ **Resolvido** | `9d04d2e` / [src/events/on_mention_me.py:45](file:///home/andrelzinn/.projects/boo-bot/src/events/on_mention_me.py#L45) | Ajustado para `status not in [online, idle]`, com consumo de cooldown no momento do envio. |
 
 ---
 
@@ -41,118 +43,116 @@ A presente reanálise identificou **dois novos pontos de atenção imediata** (u
 
 | ID | Item Identificado | Categoria | Gravidade | Prioridade | Impacto Técnico |
 |:---|:---|:---|:---:|:---:|:---|
-| **01** | Inversão lógica na checagem de status de ausência | Lógica de Negócio | Alta | 🔴 **Alta (P1)** | Condição `status in [online, idle]` dispara o "GIF de ausência" quando o membro está online e não quando está ausente/offline. |
-| **02** | Bloco `else:` residual órfão em `main.py` | Bug Sintático/Lógico | Média-Alta | 🔴 **Alta (P1)** | `else:` anexado ao `if __name__ == "__main__":` emite erro falso `"client_id e token são necessários"` ao importar o módulo. |
-| **03** | Bloqueio de comandos em respostas de palavras-chave ("yay") | Lógica / Discord | Média | 🟡 **Média (P2)** | Se uma mensagem contiver `"yay"`, ela dá `return` mesmo que seja um comando com prefixo (ex: `!comando yay`). |
-| **04** | Arquitetura monolítica de eventos (ausência de Cogs) | Arquitetura | Média | 🟡 **Média (P2)** | Eventos vinculados via import por efeito colateral; inviabiliza Slash Commands modernos, hot-reloading e modularidade. |
-| **05** | `init.sh` com acoplamento exclusivo à pasta `.dev` | Shell Script | Baixa | 🟡 **Média (P2)** | Não detecta `.venv` (padrão do VS Code e da maioria das ferramentas Python). |
-| **06** | URLs estáticas de GIFs sem fallback e parametrização | Resiliência / Config | Baixa-Média | 🟡 **Média (P2)** | GIFs externos dependentes de domínio terceiro (`klipy.com`) sem possibilidade de override via `.env` nem fallback de texto. |
-| **07** | `README.md` minimalista sem guia de setup | Documentação | Baixa | 🟢 **Baixa (P3)** | Dificuldade para novos colaboradores entenderem dependências, variáveis de ambiente e intents do portal Discord. |
-| **08** | Dependências transitivas sem lockfile declarativo | Empacotamento | Baixa | 🟢 **Baixa (P3)** | `requirements.txt` contém dump bruto (`pip freeze`) sem separação de ferramentas de desenvolvimento e produção. |
-| **09** | Ausência de Containerização (Docker / Compose) | DevOps / Deploy | Baixa | 🟢 **Baixa (P3)** | Deploy depende da instalação manual de Python no host sem isolamento em container. |
-| **10** | Falta de Linters, Formatadores e Pipeline de CI | Qualidade de Código | Baixa | 🟢 **Baixa (P3)** | Inexistência de pipeline automatizada (GitHub Actions com Ruff e Mypy). |
+| **01** | Interceptação de comandos por palavras-chave ("yay", "violin") | Lógica / Discord | Média | 🔴 **Alta (P1)** | Mensagens contendo "yay" ou "violin" encerram o fluxo via `return` sem processar comandos iniciados por prefixo (ex: `!anuncio yay`). |
+| **02** | Ausência de Graceful Shutdown e tratamento de sinais | Confiabilidade | Média | 🔴 **Alta (P1)** | Cancelamento via `Ctrl+C` ou `SIGTERM` fecha o processo abruptamente sem desconectar a sessão da Gateway de forma limpa. |
+| **03** | Arquitetura monolítica de eventos (ausência de Cogs) | Arquitetura | Média | 🟡 **Média (P2)** | Eventos vinculados via import por efeito colateral; inviabiliza Slash Commands modernos (`app_commands`), hot-reloading e modularidade. |
+| **04** | `init.sh` com acoplamento exclusivo à pasta `.dev` | Shell Script | Baixa | 🟡 **Média (P2)** | Não detecta `.venv` (padrão do VS Code e da maioria das ferramentas Python) e não utiliza `exec`. |
+| **05** | URLs estáticas de GIFs e Cooldown sem parametrização | Resiliência / Config | Baixa-Média | 🟡 **Média (P2)** | Constantes de URLs e tempo de cooldown (`10s`) não podem ser configuradas via `.env`. |
+| **06** | `README.md` minimalista sem guia de setup | Documentação | Baixa | 🟢 **Baixa (P3)** | Dificuldade para novos colaboradores entenderem dependências, variáveis de ambiente e intents do portal Discord. |
+| **07** | Dependências transitivas sem lockfile declarativo | Empacotamento | Baixa | 🟢 **Baixa (P3)** | `requirements.txt` contém dump bruto (`pip freeze`) sem separação de ferramentas de desenvolvimento e produção. |
+| **08** | Ausência de Containerização (Docker / Compose) | DevOps / Deploy | Baixa | 🟢 **Baixa (P3)** | Deploy depende da instalação manual de Python no host sem isolamento em container. |
+| **09** | Falta de Linters, Formatadores e Pipeline de CI | Qualidade de Código | Baixa | 🟢 **Baixa (P3)** | Inexistência de pipeline automatizada (GitHub Actions com Ruff e Mypy). |
 
 ---
 
-## 🔴 Alta Prioridade (P1 — Correções Críticas de Lógica e Execução)
+## 🔴 Alta Prioridade (P1 — Estabilidade e Fluxo de Comandos)
 
-### 1. Inversão Lógica no Status de Ausência em `on_mention_me.py`
-* **Localização:** [src/events/on_mention_me.py:45](file:///home/andrelzinn/.projects/boo-bot/src/events/on_mention_me.py#L45)
+### 1. Interceptação de Comandos por Palavras-Chave de Gatilho
+* **Localização:** [src/events/on_mention_me.py:17-31](file:///home/andrelzinn/.projects/boo-bot/src/events/on_mention_me.py#L17-L31)
 * **Diagnóstico:**
-  A linha atual verifica:
-  ```python
-  if member and member.status in [Status.online, Status.idle] and not is_on_cooldown(message.channel.id):
-      try:
-          _ = await message.channel.send(GIF_URL)
-          logger.info(f"GIF de ausência enviado para #{message.channel.id}")
-  ```
-* **Impacto:**
-  O bot envia o "GIF de ausência" exatamente quando o usuário está **Online**, e **NÃO envia** quando o usuário está realmente ausente (`dnd`, `invisible`, `offline`).
+  A checagem `"yay" in content_lower` ou `content_lower in ["violin", "violino"]` executa `return` imediatamente.
+* **Cenário de Falha:**
+  Se um usuário digitar um comando como `!post yay` ou `!play violin`, o gatilho responde com o GIF e faz `return`, impedindo que `await bot.process_commands(message)` seja executado.
 * **Solução Proposta:**
-  Ajustar a condição para checar status de não-disponibilidade (`dnd`, `invisible`, `offline`) ou `member.status != Status.online`:
+  Verificar se a mensagem começa com o prefixo de comando (`bot.command_prefix`) antes de tratar palavras-chave:
   ```python
-  if member and member.status in [Status.dnd, Status.invisible, Status.offline] and not is_on_cooldown(message.channel.id):
-      try:
-          await message.channel.send(GIF_URL)
-          logger.info(f"GIF de ausência enviado para #{message.channel.id}")
-      except (Forbidden, HTTPException) as e:
-          logger.warning(f"Falha ao enviar GIF de ausência: {e}")
+  # Ignora gatilhos se a mensagem for um comando
+  if not message.content.startswith(bot.command_prefix):
+      if content_lower in ["violin", "violino"]:
+          if not is_on_cooldown(message.channel.id):
+              try:
+                  await message.reply(VIOLIN_GIF_URL)
+              except (Forbidden, HTTPException) as e:
+                  logger.warning(f"Falha ao enviar resposta de violino: {e}")
+          return
+
+      if "yay" in content_lower:
+          if not is_on_cooldown(message.channel.id):
+              try:
+                  await message.reply(YAY_CAT_GIF_URL)
+              except (Forbidden, HTTPException) as e:
+                  logger.warning(f"Falha ao enviar resposta yay: {e}")
+          return
   ```
 
 ---
 
-### 2. Bloco `else:` Órfão no `main.py`
-* **Localização:** [main.py:37-38](file:///home/andrelzinn/.projects/boo-bot/main.py#L37-L38)
+### 2. Encerramento Gracioso (*Graceful Shutdown*)
+* **Localização:** [main.py:25-36](file:///home/andrelzinn/.projects/boo-bot/main.py#L25-L36)
 * **Diagnóstico:**
-  No commit `ef6f6cf`, a validação inicial de variáveis foi refatorada com `exit(1)` no topo do `if __name__ == "__main__":`. No entanto, o `else:` original foi deixado no final do arquivo:
-  ```python
-  if __name__ == "__main__":
-      if not (settings.client_id and settings.token):
-          logger.error("client_id e token são necessários")
-          exit(1)
-      ...
-  else:
-      logger.error("client_id e token são necessários")  # <-- Órfão!
-  ```
-* **Impacto:**
-  O `else:` está emparelhado com `if __name__ == "__main__":`. Caso `main.py` seja importado por um testador ou módulo externo, o bot logará falsamente um erro de token ausente.
+  Quando o bot é encerrado via `Ctrl+C` (`SIGINT`) ou por um orquestrador/Docker (`SIGTERM`), o processo é finalizado abruptamente, gerando tracebacks de `KeyboardInterrupt` e deixando sessões HTTP pendentes no aiohttp.
 * **Solução Proposta:**
-  Remover as linhas 37 e 38 do [main.py](file:///home/andrelzinn/.projects/boo-bot/main.py).
+  Capturar `KeyboardInterrupt` e chamar `asyncio.run(bot.close())` para desconectar a sessão da Gateway e liberar os sockets HTTP de forma limpa:
+  ```python
+  try:
+      bot.run(settings.token)
+  except KeyboardInterrupt:
+      logger.info("Bot encerrado pelo usuário.")
+  except errors.PrivilegedIntentsRequired:
+      logger.critical(
+          "Privileged Intents não estão ativadas! "
+          "Acesse https://discord.com/developers/applications -> Seu Bot -> 'Bot' "
+          "e ative 'Presence Intent', 'Server Members Intent' e 'Message Content Intent'."
+      )
+  except errors.LoginFailure:
+      logger.critical("Token do bot inválido. Verifique a variável TOKEN no arquivo .env.")
+  except Exception as e:
+      logger.critical(f"Erro fatal ao iniciar o bot: {e}")
+  ```
 
 ---
 
 ## 🟡 Média Prioridade (P2 — Arquitetura, Modularização e Resiliência)
 
-### 3. Palavras-Chave de Gatilho vs Comandos
-* **Localização:** [src/events/on_mention_me.py:17-31](file:///home/andrelzinn/.projects/boo-bot/src/events/on_mention_me.py#L17-L31)
-* **Diagnóstico:**
-  A checagem de `"yay" in content_lower` executa `return` mesmo que a mensagem seja um comando iniciado pelo prefixo (ex: `!anuncio yay`).
-* **Solução Proposta:**
-  Garantir que mensagens contendo comandos não sejam interceptadas pelos gatilhos automáticos:
-  ```python
-  if "yay" in content_lower and not message.content.startswith(bot.command_prefix):
-      if not is_on_cooldown(message.channel.id):
-          try:
-              await message.reply(YAY_CAT_GIF_URL)
-          except (Forbidden, HTTPException) as e:
-              logger.warning(f"Falha ao enviar resposta yay: {e}")
-      return
-  ```
-
----
-
-### 4. Migração para Arquitetura Modular de Cogs (`commands.Cog`)
+### 3. Migração para Arquitetura Modular de Cogs (`commands.Cog`)
 * **Localização:** [src/bot.py](file:///home/andrelzinn/.projects/boo-bot/src/bot.py), [src/events/on_mention_me.py](file:///home/andrelzinn/.projects/boo-bot/src/events/on_mention_me.py), [main.py](file:///home/andrelzinn/.projects/boo-bot/main.py)
-* **Diagnóstico:** Os eventos continuam vinculados ao bot através de import com efeito colateral (`import src.events.on_mention_me`).
+* **Diagnóstico:** Os eventos continuam vinculados ao bot através de importação direta com efeito colateral (`import src.events.on_mention_me`).
 * **Impacto:** Dificulta a criação de Slash Commands (`app_commands`), o desacoplamento de listeners e o recarregamento a quente de extensões (*hot-reload*).
 * **Solução Proposta:**
-  Estruturar os módulos em classes de Cog dentro de `src/cogs/`:
-  - `src/cogs/mentions.py`: listener de menções e monitoramento de status.
-  - `src/cogs/reactions.py`: gatilhos de resposta rápida ("violin", "yay").
-  - Utilizar o método assíncrono `setup_hook` para carregar as extensões dinamicamente no ciclo de vida do bot:
-  ```python
-  # Exemplo em src/cogs/mentions.py
-  from discord.ext import commands
-  import discord
+  1. Subclasse de `commands.Bot` com hook assíncrono `setup_hook` para carregar extensões e sincronizar Slash Commands:
+     ```python
+     # src/bot.py
+     from discord import Intents
+     from discord.ext import commands
+     from src.utils.logger import logger
 
-  class MentionCog(commands.Cog):
-      def __init__(self, bot: commands.Bot):
-          self.bot = bot
+     class BooBot(commands.Bot):
+         def __init__(self):
+             intents = Intents.default()
+             intents.message_content = True
+             intents.presences = True
+             intents.members = True
+             super().__init__(command_prefix="!", intents=intents)
 
-      @commands.Cog.listener()
-      async def on_message(self, message: discord.Message):
-          ...
+         async def setup_hook(self):
+             await self.load_extension("src.cogs.mentions")
+             await self.load_extension("src.cogs.reactions")
+             logger.info("Extensões carregadas com sucesso.")
 
-  async def setup(bot: commands.Bot):
-      await bot.add_cog(MentionCog(bot))
-  ```
+     bot = BooBot()
+     ```
+  2. Estruturar os módulos em classes de Cog dentro de `src/cogs/`:
+     - `src/cogs/mentions.py`: listener de menções e monitoramento de ausência.
+     - `src/cogs/reactions.py`: palavras-chave interativas ("violin", "yay").
 
 ---
 
-### 5. Fallback para Ambientes Virtuais no `init.sh`
-* **Localização:** [init.sh:4](file:///home/andrelzinn/.projects/boo-bot/init.sh#L4)
-* **Diagnóstico:** O script faz `source` estritamente em `.dev/bin/activate`.
-* **Solução Proposta:** Adicionar fallback para detectar tanto `.venv` quanto `.dev`:
+### 4. Suporte a `.venv` e uso de `exec` no `init.sh`
+* **Localização:** [init.sh:4-5](file:///home/andrelzinn/.projects/boo-bot/init.sh#L4-L5)
+* **Diagnóstico:**
+  - O script faz `source` estritamente em `.dev/bin/activate`. Caso o desenvolvedor utilize `.venv` (padrão de ferramentas modernas), o script falha.
+  - Não utiliza `exec`, deixando o bash pai ativo na árvore de processos sem repassar sinais `SIGINT`/`SIGTERM` diretamente ao Python.
+* **Solução Proposta:**
   ```bash
   #!/bin/bash
   set -e
@@ -163,7 +163,7 @@ A presente reanálise identificou **dois novos pontos de atenção imediata** (u
   elif [ -d "${BASE_DIR}/.dev" ]; then
       source "${BASE_DIR}/.dev/bin/activate"
   else
-      echo "Nenhum ambiente virtual (.venv ou .dev) encontrado!" >&2
+      echo "Erro: Nenhum ambiente virtual (.venv ou .dev) encontrado!" >&2
       exit 1
   fi
 
@@ -172,41 +172,53 @@ A presente reanálise identificou **dois novos pontos de atenção imediata** (u
 
 ---
 
-### 6. URLs de GIFs com Fallback e Parametrização via `.env`
-* **Localização:** [src/config/constants.py](file:///home/andrelzinn/.projects/boo-bot/src/config/constants.py)
-* **Diagnóstico:** URLs estáticas de terceiros (`klipy.com`). Se a plataforma remover o arquivo ou mudar a rota, o link se torna quebrado (404).
-* **Solução Proposta:** Permitir customizar as URLs via campos opcionais no `Settings` (com valores padrão para as URLs atuais) e adicionar fallback de mensagem de texto.
+### 5. Parametrização de Cooldown e URLs via `.env`
+* **Localização:** [src/config/settings.py](file:///home/andrelzinn/.projects/boo-bot/src/config/settings.py) e [src/utils/cooldown.py](file:///home/andrelzinn/.projects/boo-bot/src/utils/cooldown.py)
+* **Diagnóstico:**
+  O tempo de cooldown (`10` segundos) e as URLs de GIFs são estáticos no código.
+* **Solução Proposta:**
+  Torná-los configuráveis com valores padrão via `Settings`:
+  ```python
+  class Settings(BaseSettings):
+      token: str = Field(default="")
+      client_id: str = Field(default="")
+      user_id: int = Field(default=0)
+      cooldown_seconds: int = Field(default=10)
+      gif_url: str = Field(default="https://klipy.com/gifs/cat-hello-cat-peek")
+      violin_gif_url: str = Field(default="https://klipy.com/gifs/cat-instrumental-1")
+      yay_cat_gif_url: str = Field(default="https://klipy.com/gifs/cat-chinese-4")
+  ```
 
 ---
 
 ## 🟢 Baixa Prioridade (P3 — DevOps, Qualidade e Documentação)
 
-### 7. Documentação Completa no `README.md`
+### 6. Documentação Completa no `README.md`
 * **Localização:** [README.md](file:///home/andrelzinn/.projects/boo-bot/README.md)
 * **Solução Proposta:**
   Estruturar o README com:
-  1. Visão geral e propósito do bot.
+  1. Descrição do projeto e funcionalidades.
   2. Pré-requisitos (Python 3.10+, Discord Developer Portal e Gateway Intents).
-  3. Passo a passo de instalação e criação de ambiente virtual.
+  3. Passo a passo de instalação e criação de ambiente virtual (`python -m venv .venv`).
   4. Configuração das variáveis de ambiente (`.env`).
   5. Instruções de execução local (`./init.sh`) e Docker.
 
 ---
 
-### 8. Gestão Moderna de Dependências e `pyproject.toml`
+### 7. Gestão Moderna de Dependências e `pyproject.toml`
 * **Localização:** [requirements.txt](file:///home/andrelzinn/.projects/boo-bot/requirements.txt)
 * **Solução Proposta:**
-  Adicionar `pyproject.toml` declarando dependências diretas (`discord.py`, `pydantic-settings`, `python-dotenv`) e dependências de desenvolvimento (`ruff`, `mypy`, `pytest`, `pytest-asyncio`).
+  Adicionar `pyproject.toml` (PEP 621) declarando dependências diretas (`discord.py`, `pydantic-settings`, `python-dotenv`) e dependências de desenvolvimento (`ruff`, `mypy`, `pytest`, `pytest-asyncio`).
 
 ---
 
-### 9. Containerização (Dockerfile e Docker Compose)
+### 8. Containerização (Dockerfile e Docker Compose)
 * **Solução Proposta:**
   Criar um `Dockerfile` multi-stage com imagem base `python:3.12-slim` (ou 3.14-slim) executando sob usuário não-root, acompanhado de `docker-compose.yml` com política `restart: unless-stopped` e montagem do arquivo `.env`.
 
 ---
 
-### 10. Pipeline de CI e Ferramentas de Linting (Ruff / Mypy / GitHub Actions)
+### 9. Pipeline de CI e Ferramentas de Linting (Ruff / Mypy / GitHub Actions)
 * **Solução Proposta:**
   Criar workflow `.github/workflows/ci.yml` que execute:
   1. `ruff check .` (análise estática e boas práticas).
@@ -226,25 +238,25 @@ boo-bot/
 │   └── melhorias.md               # Este relatório de diagnóstico técnico
 ├── src/
 │   ├── __init__.py
-│   ├── bot.py                     # Classe CustomBot / Setup com hooks assíncronos
+│   ├── bot.py                     # Classe BooBot customizada com setup_hook
 │   ├── config/
 │   │   ├── __init__.py
-│   │   ├── constants.py           # Constantes e valores padrão
+│   │   ├── constants.py           # Constantes padrão
 │   │   └── settings.py            # Validação tipada com Pydantic Settings
-│   ├── cogs/                      # Módulos desacoplados de Cogs
+│   ├── cogs/                      # Extensões modulares
 │   │   ├── __init__.py
-│   │   ├── mentions.py            # Eventos de menção e checagem de status
+│   │   ├── mentions.py            # Listener de menções e monitoramento de ausência
 │   │   └── reactions.py           # Gatilhos de resposta rápida (violin, yay)
 │   └── utils/
 │       ├── __init__.py
-│       ├── cooldown.py            # Controle thread-safe de cooldown por canal
+│       ├── cooldown.py            # Controle de cooldown por canal
 │       └── logger.py              # Configuração centralizada de logs
 ├── .env.example                   # Modelo limpo de variáveis de ambiente
-├── .gitignore                     # Regras limpas sem duplicatas ou bloqueio de docs
+├── .gitignore                     # Regras padronizadas do Python
 ├── Dockerfile                     # Imagem leve e segura para produção
 ├── docker-compose.yml             # Orquestração do container do bot
-├── init.sh                        # Script com resolução portátil e suporte a .venv/.dev
-├── main.py                        # Ponto de entrada limpo com try/except
+├── init.sh                        # Script portátil com suporte a .venv/.dev e exec
+├── main.py                        # Ponto de entrada com graceful shutdown
 ├── pyproject.toml                 # Metadados, linters e dependências do projeto
 ├── README.md                      # Documentação completa de uso e setup
 └── requirements.txt               # Dependências diretas do projeto
@@ -265,17 +277,19 @@ boo-bot/
   - [x] Limpar [.gitignore](file:///home/andrelzinn/.projects/boo-bot/.gitignore) removendo `docs` e duplicatas.
   - [x] Capturar `PrivilegedIntentsRequired` e `LoginFailure` no [main.py](file:///home/andrelzinn/.projects/boo-bot/main.py).
   - [x] Corrigir nome de variável `BASE_DIR` no [init.sh](file:///home/andrelzinn/.projects/boo-bot/init.sh).
+  - [x] Remover bloco `else:` residual no [main.py](file:///home/andrelzinn/.projects/boo-bot/main.py).
+  - [x] Corrigir lógica de ausência para `status not in [online, idle]` em [src/events/on_mention_me.py](file:///home/andrelzinn/.projects/boo-bot/src/events/on_mention_me.py).
 
-- [ ] **Fase 2 — Ajustes Imediatos de Lógica e Sintaxe (Próximos Passos):**
-  - [ ] Corrigir checagem de ausência em [src/events/on_mention_me.py](file:///home/andrelzinn/.projects/boo-bot/src/events/on_mention_me.py) (trocar `[online, idle]` por `[dnd, invisible, offline]` ou `!= Status.online`).
-  - [ ] Remover bloco `else:` residual no [main.py](file:///home/andrelzinn/.projects/boo-bot/main.py).
-  - [ ] Proteger gatilho `"yay"` para não interceptar comandos com prefixo.
-  - [ ] Adicionar suporte a `.venv` no [init.sh](file:///home/andrelzinn/.projects/boo-bot/init.sh).
+- [ ] **Fase 2 — Robustez de Comandos e Scripts:**
+  - [ ] Proteger gatilhos de palavras-chave para não interceptar mensagens iniciadas com `bot.command_prefix`.
+  - [ ] Adicionar suporte a `KeyboardInterrupt` (*graceful shutdown*) no [main.py](file:///home/andrelzinn/.projects/boo-bot/main.py).
+  - [ ] Adicionar fallback para `.venv` e comando `exec` no [init.sh](file:///home/andrelzinn/.projects/boo-bot/init.sh).
+  - [ ] Tornar tempo de cooldown e URLs customizáveis via [src/config/settings.py](file:///home/andrelzinn/.projects/boo-bot/src/config/settings.py).
 
-- [ ] **Fase 3 — Arquitetura de Cogs e Extensibilidade:**
-  - [ ] Migrar listeners de `src/events/` para Cogs modulares em `src/cogs/`.
-  - [ ] Permitir customização das URLs de GIFs via variáveis no `.env`.
-  - [ ] Implementar Slash Commands (`app_commands`).
+- [ ] **Fase 3 — Arquitetura Modular de Cogs:**
+  - [ ] Criar classe `BooBot` em `src/bot.py` com carregamento dinâmico via `setup_hook`.
+  - [ ] Migrar listeners para `src/cogs/mentions.py` e `src/cogs/reactions.py`.
+  - [ ] Suporte a Slash Commands (`app_commands`).
 
 - [ ] **Fase 4 — DevOps, Documentação e Qualidade:**
   - [ ] Redigir documentação completa no [README.md](file:///home/andrelzinn/.projects/boo-bot/README.md).
