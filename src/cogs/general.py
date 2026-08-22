@@ -9,7 +9,7 @@ class GeneralCog(commands.Cog, name="general"):
     """Comandos gerais e utilidades do bot."""
 
     def __init__(self, bot: commands.Bot) -> None:
-        self.bot = bot
+        self.bot: commands.Bot = bot
         logger.info("General cog carregado.")
 
     @app_commands.command(name="ping", description="Verifica a latência do bot.")
@@ -20,7 +20,7 @@ class GeneralCog(commands.Cog, name="general"):
             description=f"Latência do Gateway: `{latency}ms`",
             color=discord.Color.green(),
         )
-        await interaction.response.send_message(embed=embed)
+        _ = await interaction.response.send_message(embed=embed)
 
 
 async def setup(bot: commands.Bot) -> None:

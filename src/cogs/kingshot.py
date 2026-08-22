@@ -1,5 +1,4 @@
 import re
-from typing import Optional
 
 import discord
 from discord import Embed, Interaction, Message, Role, TextChannel, app_commands
@@ -7,10 +6,11 @@ from discord.ext import commands
 
 from src.services.kingshot_service import kingshot_service
 from src.services.kingshot_store import kingshot_store
+from src.types.kingshot import RedeemResult
 from src.utils.logger import logger
 
 
-def build_results_embed(gift_code: str, results: list[dict]) -> Embed:
+def build_results_embed(gift_code: str, results: list[RedeemResult]) -> Embed:
     """Constrói um Embed visualmente organizado com o relatório do resgate."""
     success_count = sum(1 for r in results if r.get("success"))
     total_count = len(results)
@@ -42,20 +42,23 @@ class KingshotCog(commands.GroupCog, name="kingshot"):
     """Comandos e automação de resgate de códigos para o jogo Kingshot."""
 
     def __init__(self, bot: commands.Bot) -> None:
-        self.bot = bot
+        self.bot: commands.Bot = bot
         logger.info("Kingshot cog carregado.")
 
     def _check_permission(self, interaction: Interaction) -> bool:
         """Verifica se o usuário é administrador ou possui o cargo configurado."""
         if not interaction.guild:
             return True
-        if interaction.user.guild_permissions.administrator:  # type: ignore[union-attr]
-            return True
 
-        config = kingshot_store.get_config()
-        admin_role_id = config.get("admin_role_id")
-        if admin_role_id and isinstance(interaction.user, discord.Member):
-            return any(role.id == admin_role_id for role in interaction.user.roles)
+        user = interaction.user
+        if isinstance(user, discord.Member):
+            if user.guild_permissions.administrator:
+                return True
+
+            config = kingshot_store.get_config()
+            admin_role_id = config.get("admin_role_id")
+            if admin_role_id and any(role.id == admin_role_id for role in user.roles):
+                return True
 
         return False
 
@@ -71,7 +74,7 @@ class KingshotCog(commands.GroupCog, name="kingshot"):
         self,
         interaction: Interaction,
         channel: TextChannel,
-        admin_role: Optional[Role] = None,
+        admin_role: Role | None = None,
     ) -> None:
         if not self._check_permission(interaction):
             _ = await interaction.response.send_message(
@@ -104,7 +107,7 @@ class KingshotCog(commands.GroupCog, name="kingshot"):
         interaction: Interaction,
         player_id: str,
         kingdom: str,
-        nickname: Optional[str] = None,
+        nickname: str | None = None,
     ) -> None:
         if not self._check_permission(interaction):
             _ = await interaction.response.send_message(
@@ -179,7 +182,9 @@ class KingshotCog(commands.GroupCog, name="kingshot"):
             pid = p.get("player_id", "")
             kid = p.get("kingdom", "1")
             nick = p.get("nickname", pid)
-            embed.add_field(name=f"👑 {nick}", value=f"ID: `{pid}`\nReino: `{kid}`", inline=True)
+            _ = embed.add_field(
+                name=f"👑 {nick}", value=f"ID: `{pid}`\nReino: `{kid}`", inline=True
+            )
 
         _ = embed.set_footer(text="Boo Bot • Kingshot Redeemer")
         _ = await interaction.response.send_message(embed=embed)
@@ -196,7 +201,7 @@ class KingshotCog(commands.GroupCog, name="kingshot"):
         self,
         interaction: Interaction,
         gift_code: str,
-        player_id: Optional[str] = None,
+        player_id: str | None = None,
     ) -> None:
         clean_code = gift_code.strip()
         _ = await interaction.response.defer(thinking=True)

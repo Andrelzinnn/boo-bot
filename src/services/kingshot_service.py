@@ -1,14 +1,16 @@
 import asyncio
-from typing import Any
 
 from playwright.async_api import (
     Browser,
     Page,
-    TimeoutError as PlaywrightTimeoutError,
     async_playwright,
+)
+from playwright.async_api import (
+    TimeoutError as PlaywrightTimeoutError,
 )
 
 from src.services.kingshot_store import kingshot_store
+from src.types.kingshot import RedeemResult
 from src.utils.logger import logger
 
 DEFAULT_KINGSHOT_URL = "https://ks-giftcode.centurygame.com/"
@@ -16,8 +18,8 @@ DEFAULT_KINGSHOT_URL = "https://ks-giftcode.centurygame.com/"
 
 class KingshotService:
     def __init__(self, url: str = DEFAULT_KINGSHOT_URL, timeout_ms: int = 1500) -> None:
-        self.url = url
-        self.timeout_ms = timeout_ms
+        self.url: str = url
+        self.timeout_ms: int = timeout_ms
 
     async def _setup_lightweight_page(self, browser: Browser) -> Page:
         """Cria uma página no navegador bloqueando o download de mídias e fontes pesadas."""
@@ -28,7 +30,7 @@ class KingshotService:
         page = await context.new_page()
 
         # Bloqueia apenas mídias pesadas para garantir que scripts e formulários carreguem normalmente
-        await page.route(
+        _ = await page.route(
             "**/*.{png,jpg,jpeg,gif,svg,webp,mp4,mp3}",
             lambda route: route.abort(),
         )
@@ -48,12 +50,12 @@ class KingshotService:
             )
             page = await self._setup_lightweight_page(browser)
             try:
-                await page.goto(self.url, wait_until="domcontentloaded", timeout=15000)
-                await page.wait_for_selector("input[placeholder*='Player ID']", timeout=10000)
+                _ = await page.goto(self.url, wait_until="domcontentloaded", timeout=15000)
+                _ = await page.wait_for_selector("input[placeholder*='Player ID']", timeout=10000)
 
-                await page.fill("input[placeholder*='Player ID']", player_id)
-                await page.fill("input[placeholder*='Kingdom']", kingdom)
-                await page.fill("input[placeholder*='Gift Code']", "VALIDATE_CHECK")
+                _ = await page.fill("input[placeholder*='Player ID']", player_id)
+                _ = await page.fill("input[placeholder*='Kingdom']", kingdom)
+                _ = await page.fill("input[placeholder*='Gift Code']", "VALIDATE_CHECK")
 
                 btn = await page.query_selector(".exchange_btn, .btn")
                 if btn:
@@ -72,7 +74,14 @@ class KingshotService:
                     except Exception:
                         pass
 
-                    if any(w in msg_lower for w in ["character info is incorrect", "user info error", "enter your kingdom"]):
+                    if any(
+                        w in msg_lower
+                        for w in [
+                            "character info is incorrect",
+                            "user info error",
+                            "enter your kingdom",
+                        ]
+                    ):
                         return False, msg
 
                     # Qualquer outra resposta (ex: código inválido, expirado) significa que a conta e o reino são válidos!
@@ -91,9 +100,9 @@ class KingshotService:
         player_id: str,
         kingdom: str,
         gift_code: str,
-    ) -> dict[str, Any]:
+    ) -> RedeemResult:
         """Executa a rotina de resgate para um jogador específico na página aberta."""
-        result: dict[str, Any] = {
+        result: RedeemResult = {
             "player_id": player_id,
             "kingdom": kingdom,
             "nickname": player_id,
@@ -104,9 +113,9 @@ class KingshotService:
 
         try:
             # Preenche os 3 campos obrigatórios do formulário
-            await page.fill("input[placeholder*='Player ID']", player_id)
-            await page.fill("input[placeholder*='Kingdom']", kingdom)
-            await page.fill("input[placeholder*='Gift Code']", gift_code)
+            _ = await page.fill("input[placeholder*='Player ID']", player_id)
+            _ = await page.fill("input[placeholder*='Kingdom']", kingdom)
+            _ = await page.fill("input[placeholder*='Gift Code']", gift_code)
 
             # Clica no botão Confirm
             btn = await page.query_selector(".exchange_btn, .btn")
@@ -115,7 +124,9 @@ class KingshotService:
 
             # Aguarda a mensagem do modal de resposta
             try:
-                modal = await page.wait_for_selector(".message_modal .msg", timeout=self.timeout_ms * 4)
+                modal = await page.wait_for_selector(
+                    ".message_modal .msg", timeout=self.timeout_ms * 4
+                )
                 if modal:
                     msg_text = (await modal.inner_text()).strip()
                     result["message"] = msg_text
@@ -129,19 +140,29 @@ class KingshotService:
                         pass
 
                     msg_lower = msg_text.lower()
-                    if any(w in msg_lower for w in ["success", "congratulations", "sucesso", "recompensa"]):
+                    if any(
+                        w in msg_lower
+                        for w in ["success", "congratulations", "sucesso", "recompensa"]
+                    ):
                         result["success"] = True
                         result["status"] = "✅ Sucesso"
-                    elif any(w in msg_lower for w in ["used", "already", "resgatado", "repetido", "claimed"]):
+                    elif any(
+                        w in msg_lower
+                        for w in ["used", "already", "resgatado", "repetido", "claimed"]
+                    ):
                         result["success"] = False
                         result["status"] = "⚠️ Já Resgatado"
                     elif any(w in msg_lower for w in ["expired", "expirado"]):
                         result["success"] = False
                         result["status"] = "⏰ Código Expirado"
-                    elif any(w in msg_lower for w in ["character info is incorrect", "user info error"]):
+                    elif any(
+                        w in msg_lower for w in ["character info is incorrect", "user info error"]
+                    ):
                         result["success"] = False
                         result["status"] = "❌ ID ou Reino Incorreto"
-                    elif any(w in msg_lower for w in ["not exist", "invalid", "inválido", "incorreto"]):
+                    elif any(
+                        w in msg_lower for w in ["not exist", "invalid", "inválido", "incorreto"]
+                    ):
                         result["success"] = False
                         result["status"] = "❌ Código Inválido"
                     elif any(w in msg_lower for w in ["server busy", "busy"]):
@@ -167,16 +188,16 @@ class KingshotService:
         self,
         gift_code: str,
         target_player_ids: list[str] | None = None,
-    ) -> list[dict[str, Any]]:
+    ) -> list[RedeemResult]:
         """Resgata o código de presente para todas as contas registradas."""
         players = kingshot_store.get_players()
         if target_player_ids:
-            players = [p for p in players if str(p.get("player_id")) in target_player_ids]
+            players = [p for p in players if p["player_id"] in target_player_ids]
 
         if not players:
             return []
 
-        results: list[dict[str, Any]] = []
+        results: list[RedeemResult] = []
 
         async with async_playwright() as p:
             browser = await p.chromium.launch(
@@ -191,15 +212,17 @@ class KingshotService:
             page = await self._setup_lightweight_page(browser)
 
             try:
-                await page.goto(self.url, wait_until="domcontentloaded", timeout=15000)
-                await page.wait_for_selector("input[placeholder*='Player ID']", timeout=10000)
+                _ = await page.goto(self.url, wait_until="domcontentloaded", timeout=15000)
+                _ = await page.wait_for_selector("input[placeholder*='Player ID']", timeout=10000)
 
                 for player in players:
-                    pid = str(player.get("player_id"))
-                    kid = str(player.get("kingdom", "1"))
-                    nick = str(player.get("nickname") or pid)
+                    pid = player["player_id"]
+                    kid = player.get("kingdom", "1")
+                    nick = player.get("nickname") or pid
 
-                    logger.info(f"Tentando resgatar '{gift_code}' para {nick} (ID: {pid}, Reino: {kid})...")
+                    logger.info(
+                        f"Tentando resgatar '{gift_code}' para {nick} (ID: {pid}, Reino: {kid})..."
+                    )
                     res = await self._redeem_for_single_player_on_page(page, pid, kid, gift_code)
                     res["nickname"] = nick
                     results.append(res)

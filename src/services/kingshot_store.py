@@ -1,9 +1,8 @@
 import json
-import os
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
 
+from src.types.kingshot import KingshotConfig, KingshotData, PlayerRecord
 from src.utils.logger import logger
 
 DEFAULT_DATA_PATH = Path(__file__).resolve().parents[2] / "data" / "kingshot_data.json"
@@ -17,7 +16,7 @@ class KingshotStore:
     def _ensure_file_exists(self) -> None:
         self.data_path.parent.mkdir(parents=True, exist_ok=True)
         if not self.data_path.exists():
-            initial_data: dict[str, Any] = {
+            initial_data: KingshotData = {
                 "config": {
                     "redeem_channel_id": None,
                     "admin_role_id": None,
@@ -26,24 +25,31 @@ class KingshotStore:
             }
             self._write_file(initial_data)
 
-    def _read_file(self) -> dict[str, Any]:
+    def _read_file(self) -> KingshotData:
         try:
             with open(self.data_path, "r", encoding="utf-8") as f:
-                return json.load(f)
+                data = json.load(f)
+                return {
+                    "config": data.get("config", {"redeem_channel_id": None, "admin_role_id": None}),
+                    "players": data.get("players", []),
+                }
         except Exception as e:
             logger.error(f"Erro ao ler banco de dados Kingshot ({self.data_path}): {e}")
-            return {"config": {}, "players": []}
+            return {
+                "config": {"redeem_channel_id": None, "admin_role_id": None},
+                "players": [],
+            }
 
-    def _write_file(self, data: dict[str, Any]) -> None:
+    def _write_file(self, data: KingshotData) -> None:
         try:
             with open(self.data_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
         except Exception as e:
             logger.error(f"Erro ao salvar banco de dados Kingshot ({self.data_path}): {e}")
 
-    def get_config(self) -> dict[str, Any]:
+    def get_config(self) -> KingshotConfig:
         data = self._read_file()
-        return data.get("config", {})
+        return data["config"]
 
     def set_config(
         self,
@@ -51,16 +57,15 @@ class KingshotStore:
         admin_role_id: int | None = None,
     ) -> None:
         data = self._read_file()
-        config = data.setdefault("config", {})
         if redeem_channel_id is not None:
-            config["redeem_channel_id"] = redeem_channel_id
+            data["config"]["redeem_channel_id"] = redeem_channel_id
         if admin_role_id is not None:
-            config["admin_role_id"] = admin_role_id
+            data["config"]["admin_role_id"] = admin_role_id
         self._write_file(data)
 
-    def get_players(self) -> list[dict[str, Any]]:
+    def get_players(self) -> list[PlayerRecord]:
         data = self._read_file()
-        return data.get("players", [])
+        return data["players"]
 
     def add_player(
         self,
@@ -70,18 +75,17 @@ class KingshotStore:
         added_by: int,
     ) -> bool:
         data = self._read_file()
-        players: list[dict[str, Any]] = data.setdefault("players", [])
         pid_str = str(player_id).strip()
         kid_str = str(kingdom).strip()
 
-        for p in players:
-            if str(p.get("player_id")) == pid_str:
+        for p in data["players"]:
+            if p["player_id"] == pid_str:
                 p["kingdom"] = kid_str
                 p["nickname"] = nickname
                 self._write_file(data)
                 return False  # Já existia, apenas atualizou
 
-        players.append(
+        data["players"].append(
             {
                 "player_id": pid_str,
                 "kingdom": kid_str,
@@ -93,27 +97,27 @@ class KingshotStore:
         self._write_file(data)
         return True
 
-    def remove_player(self, query: str) -> dict[str, Any] | None:
+    def remove_player(self, query: str) -> PlayerRecord | None:
         data = self._read_file()
-        players: list[dict[str, Any]] = data.setdefault("players", [])
         query_clean = query.strip().lower()
 
-        for idx, p in enumerate(players):
-            if (
-                str(p.get("player_id", "")).lower() == query_clean
-                or str(p.get("nickname", "")).lower() == query_clean
-            ):
-                removed = players.pop(idx)
+        for idx, p in enumerate(data["players"]):
+            if p["player_id"].lower() == query_clean or p["nickname"].lower() == query_clean:
+                removed = data["players"].pop(idx)
                 self._write_file(data)
                 return removed
         return None
 
-    def update_player(self, player_id: str, nickname: str | None = None, kingdom: str | None = None) -> None:
+    def update_player(
+        self,
+        player_id: str,
+        nickname: str | None = None,
+        kingdom: str | None = None,
+    ) -> None:
         data = self._read_file()
-        players: list[dict[str, Any]] = data.setdefault("players", [])
         updated = False
-        for p in players:
-            if str(p.get("player_id")) == str(player_id):
+        for p in data["players"]:
+            if p["player_id"] == str(player_id):
                 if nickname:
                     p["nickname"] = nickname
                 if kingdom:
@@ -123,14 +127,11 @@ class KingshotStore:
         if updated:
             self._write_file(data)
 
-    def find_player(self, query: str) -> dict[str, Any] | None:
+    def find_player(self, query: str) -> PlayerRecord | None:
         players = self.get_players()
         query_clean = query.strip().lower()
         for p in players:
-            if (
-                str(p.get("player_id", "")).lower() == query_clean
-                or str(p.get("nickname", "")).lower() == query_clean
-            ):
+            if p["player_id"].lower() == query_clean or p["nickname"].lower() == query_clean:
                 return p
         return None
 
