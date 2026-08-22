@@ -13,7 +13,7 @@ from playwright.async_api import (
 )
 
 from src.services.kingshot_store import kingshot_store
-from src.types.kingshot import PlayerRecord, RedeemResult
+from src.types.kingshot import RedeemResult
 from src.utils.logger import logger
 
 DEFAULT_KINGSHOT_URL = "https://ks-giftcode.centurygame.com/"
@@ -37,7 +37,7 @@ class KingshotService:
         page = await context.new_page()
 
         # Bloqueia apenas mídias pesadas para garantir que formulários carreguem normalmente
-        await page.route(
+        _ = await page.route(
             "**/*.{png,jpg,jpeg,gif,svg,webp,mp4,mp3}",
             lambda route: route.abort(),
         )
@@ -57,12 +57,12 @@ class KingshotService:
             )
             page = await self._setup_lightweight_page(browser)
             try:
-                await page.goto(self.url, wait_until="domcontentloaded", timeout=15000)
-                await page.wait_for_selector("input[placeholder*='Player ID']", timeout=10000)
+                _ = await page.goto(self.url, wait_until="domcontentloaded", timeout=15000)
+                _ = await page.wait_for_selector("input[placeholder*='Player ID']", timeout=10000)
 
-                await page.fill("input[placeholder*='Player ID']", player_id)
-                await page.fill("input[placeholder*='Kingdom']", kingdom)
-                await page.fill("input[placeholder*='Gift Code']", "VALIDATE_CHECK")
+                _ = await page.fill("input[placeholder*='Player ID']", player_id)
+                _ = await page.fill("input[placeholder*='Kingdom']", kingdom)
+                _ = await page.fill("input[placeholder*='Gift Code']", "VALIDATE_CHECK")
 
                 btn = await page.query_selector(".exchange_btn, .btn")
                 if btn:
@@ -117,9 +117,9 @@ class KingshotService:
         }
 
         try:
-            await page.fill("input[placeholder*='Player ID']", player_id)
-            await page.fill("input[placeholder*='Kingdom']", kingdom)
-            await page.fill("input[placeholder*='Gift Code']", gift_code)
+            _ = await page.fill("input[placeholder*='Player ID']", player_id)
+            _ = await page.fill("input[placeholder*='Kingdom']", kingdom)
+            _ = await page.fill("input[placeholder*='Gift Code']", gift_code)
 
             btn = await page.query_selector(".exchange_btn, .btn")
             if btn:
@@ -187,15 +187,14 @@ class KingshotService:
     async def redeem_all(
         self,
         gift_code: str,
-        players: list[PlayerRecord] | None = None,
         target_player_ids: list[str] | None = None,
     ) -> list[RedeemResult]:
-        """Resgata o código de presente para uma lista de contas (ou todas as cadastradas)."""
-        account_list = players if players is not None else kingshot_store.get_players()
+        """Resgata o código de presente para todas as contas registradas."""
+        players = kingshot_store.get_players()
         if target_player_ids:
-            account_list = [p for p in account_list if p["player_id"] in target_player_ids]
+            players = [p for p in players if p["player_id"] in target_player_ids]
 
-        if not account_list:
+        if not players:
             return []
 
         results: list[RedeemResult] = []
@@ -213,10 +212,10 @@ class KingshotService:
             page = await self._setup_lightweight_page(browser)
 
             try:
-                await page.goto(self.url, wait_until="domcontentloaded", timeout=15000)
-                await page.wait_for_selector("input[placeholder*='Player ID']", timeout=10000)
+                _ = await page.goto(self.url, wait_until="domcontentloaded", timeout=15000)
+                _ = await page.wait_for_selector("input[placeholder*='Player ID']", timeout=10000)
 
-                for player in account_list:
+                for player in players:
                     pid = player["player_id"]
                     kid = player.get("kingdom", "1")
                     nick = player.get("nickname") or pid
