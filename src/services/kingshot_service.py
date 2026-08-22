@@ -12,8 +12,7 @@ from playwright.async_api import (
     TimeoutError as PlaywrightTimeoutError,
 )
 
-from src.services.kingshot_store import kingshot_store
-from src.types.kingshot import RedeemResult
+from src.types.kingshot import PlayerRecord, RedeemResult
 from src.utils.logger import logger
 
 DEFAULT_KINGSHOT_URL = "https://ks-giftcode.centurygame.com/"
@@ -186,11 +185,11 @@ class KingshotService:
 
     async def redeem_all(
         self,
+        players: list[PlayerRecord],
         gift_code: str,
         target_player_ids: list[str] | None = None,
     ) -> list[RedeemResult]:
-        """Resgata o código de presente para todas as contas registradas."""
-        players = kingshot_store.get_players()
+        """Resgata o código de presente para uma lista de contas de jogadores."""
         if target_player_ids:
             players = [p for p in players if p["player_id"] in target_player_ids]
 

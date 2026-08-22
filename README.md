@@ -22,6 +22,7 @@
   - Filtra comandos iniciados com prefixo para evitar conflito com comandos de texto.
 
 - **🎁 Kingshot Auto-Redeemer (`KingshotCog`):**
+  - **Suporte Multi-Servidor (Multi-Guild):** Cada servidor do Discord possui suas próprias configurações (`redeem_channel_id`, cargo de administrador) e lista de contas cadastradas 100% isoladas.
   - **Automação Web Ultra-leve:** Utiliza Playwright com Chromium em modo *headless*, bloqueando o download de mídias pesadas para economizar até 70% de CPU/RAM.
   - **Resgate em Lote (*Bulk Redemption*):** Resgata códigos de presente para todas as contas cadastradas simultaneamente.
   - **Auto-Redeem via Mensagens:** Monitora mensagens no canal configurado e dispara o resgate automático assim que um código é postado no Discord.

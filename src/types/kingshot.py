@@ -14,9 +14,13 @@ class KingshotConfig(TypedDict):
     admin_role_id: int | None
 
 
-class KingshotData(TypedDict):
+class GuildData(TypedDict):
     config: KingshotConfig
     players: list[PlayerRecord]
+
+
+class KingshotStoreData(TypedDict):
+    guilds: dict[str, GuildData]
 
 
 class RedeemResult(TypedDict):

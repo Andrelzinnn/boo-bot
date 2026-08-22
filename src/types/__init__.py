@@ -1,8 +1,15 @@
-from src.types.kingshot import KingshotConfig, KingshotData, PlayerRecord, RedeemResult
+from src.types.kingshot import (
+    GuildData,
+    KingshotConfig,
+    KingshotStoreData,
+    PlayerRecord,
+    RedeemResult,
+)
 
 __all__ = [
+    "GuildData",
     "KingshotConfig",
-    "KingshotData",
+    "KingshotStoreData",
     "PlayerRecord",
     "RedeemResult",
 ]

@@ -39,16 +39,17 @@ def build_results_embed(gift_code: str, results: list[RedeemResult]) -> Embed:
     return embed
 
 
+@app_commands.guild_only()
 class KingshotCog(commands.GroupCog, name="kingshot"):
     """Comandos e automação de resgate de códigos para o jogo Kingshot."""
 
     def __init__(self, bot: commands.Bot) -> None:
         self.bot: commands.Bot = bot
-        logger.info("Kingshot cog carregado.")
+        logger.info("Kingshot cog carregado com suporte a múltiplos servidores.")
 
     def _check_permission(self, interaction: Interaction) -> bool:
-        """Verifica se o usuário é administrador ou possui o cargo configurado."""
-        if not interaction.guild:
+        """Verifica se o usuário é administrador ou possui o cargo configurado no servidor."""
+        if not interaction.guild or not interaction.guild_id:
             return True
 
         user = interaction.user
@@ -56,7 +57,7 @@ class KingshotCog(commands.GroupCog, name="kingshot"):
             if user.guild_permissions.administrator:
                 return True
 
-            config = kingshot_store.get_config()
+            config = kingshot_store.get_config(interaction.guild_id)
             admin_role_id = config.get("admin_role_id")
             if admin_role_id and any(role.id == admin_role_id for role in user.roles):
                 return True
@@ -65,7 +66,7 @@ class KingshotCog(commands.GroupCog, name="kingshot"):
 
     # 1. Comando: Setup
     @app_commands.command(
-        name="setup", description="Configura o canal de auto-redeem e cargo de permissão."
+        name="setup", description="Configura o canal de auto-redeem e cargo do servidor."
     )
     @app_commands.describe(
         channel="Canal onde códigos de presente serão monitorados para auto-redeem",
@@ -77,13 +78,21 @@ class KingshotCog(commands.GroupCog, name="kingshot"):
         channel: TextChannel,
         admin_role: Role | None = None,
     ) -> None:
+        if not interaction.guild_id:
+            _ = await interaction.response.send_message(
+                "❌ Este comando só pode ser usado em servidores.", ephemeral=True
+            )
+            return
+
         if not self._check_permission(interaction):
             _ = await interaction.response.send_message(
-                "❌ Você não tem permissão para configurar o Kingshot.", ephemeral=True
+                "❌ Você não tem permissão para configurar o Kingshot neste servidor.",
+                ephemeral=True,
             )
             return
 
         kingshot_store.set_config(
+            guild_id=interaction.guild_id,
             redeem_channel_id=channel.id,
             admin_role_id=admin_role.id if admin_role else None,
         )
@@ -96,7 +105,7 @@ class KingshotCog(commands.GroupCog, name="kingshot"):
 
     # 2. Comando: Add Player
     @app_commands.command(
-        name="add", description="Adiciona uma conta de jogador para resgate automático."
+        name="add", description="Adiciona conta de jogador para resgate automático no servidor."
     )
     @app_commands.describe(
         player_id="O Player ID numérico do jogo Kingshot (visível no Avatar)",
@@ -110,9 +119,15 @@ class KingshotCog(commands.GroupCog, name="kingshot"):
         kingdom: str,
         nickname: str | None = None,
     ) -> None:
+        if not interaction.guild_id:
+            _ = await interaction.response.send_message(
+                "❌ Este comando só pode ser usado em servidores.", ephemeral=True
+            )
+            return
+
         if not self._check_permission(interaction):
             _ = await interaction.response.send_message(
-                "❌ Você não tem permissão para adicionar contas.", ephemeral=True
+                "❌ Você não tem permissão para adicionar contas neste servidor.", ephemeral=True
             )
             return
 
@@ -134,26 +149,38 @@ class KingshotCog(commands.GroupCog, name="kingshot"):
             _ = await interaction.followup.send(error_msg)
             return
 
-        is_new = kingshot_store.add_player(clean_id, clean_kid, display_name, interaction.user.id)
+        is_new = kingshot_store.add_player(
+            guild_id=interaction.guild_id,
+            player_id=clean_id,
+            kingdom=clean_kid,
+            nickname=display_name,
+            added_by=interaction.user.id,
+        )
         action_msg = "adicionada com sucesso" if is_new else "atualizada"
-        await interaction.followup.send(
+        _ = await interaction.followup.send(
             f"✅ Conta **{display_name}** (`ID: {clean_id}` | `Reino: {clean_kid}`) "
             + f"{action_msg} para resgate automático!"
         )
 
     # 3. Comando: Remove Player
     @app_commands.command(
-        name="remove", description="Remove uma conta de jogador pelo ID ou apelido."
+        name="remove", description="Remove conta de jogador do servidor pelo ID ou apelido."
     )
     @app_commands.describe(query="Player ID ou apelido da conta a remover")
     async def remove_cmd(self, interaction: Interaction, query: str) -> None:
-        if not self._check_permission(interaction):
+        if not interaction.guild_id:
             _ = await interaction.response.send_message(
-                "❌ Você não tem permissão para remover contas.", ephemeral=True
+                "❌ Este comando só pode ser usado em servidores.", ephemeral=True
             )
             return
 
-        removed = kingshot_store.remove_player(query)
+        if not self._check_permission(interaction):
+            _ = await interaction.response.send_message(
+                "❌ Você não tem permissão para remover contas neste servidor.", ephemeral=True
+            )
+            return
+
+        removed = kingshot_store.remove_player(interaction.guild_id, query)
         if removed:
             nick = removed.get("nickname", "Desconhecido")
             pid = removed.get("player_id", "")
@@ -163,25 +190,32 @@ class KingshotCog(commands.GroupCog, name="kingshot"):
             )
         else:
             _ = await interaction.response.send_message(
-                f"❌ Conta `{query}` não foi encontrada na base de dados.", ephemeral=True
+                f"❌ Conta `{query}` não foi encontrada na base de dados deste servidor.",
+                ephemeral=True,
             )
 
     # 4. Comando: List Players
     @app_commands.command(
-        name="list", description="Lista todas as contas registradas para resgate automático."
+        name="list", description="Lista todas as contas registradas para resgate no servidor."
     )
     async def list_cmd(self, interaction: Interaction) -> None:
-        players = kingshot_store.get_players()
+        if not interaction.guild_id:
+            _ = await interaction.response.send_message(
+                "❌ Este comando só pode ser usado em servidores.", ephemeral=True
+            )
+            return
+
+        players = kingshot_store.get_players(interaction.guild_id)
         if not players:
             _ = await interaction.response.send_message(
-                "ℹ️ Nenhuma conta cadastrada no momento. Use `/kingshot add <player_id> <kingdom>`.",
+                "ℹ️ Nenhuma conta cadastrada. Use `/kingshot add <player_id> <kingdom>`.",
                 ephemeral=True,
             )
             return
 
         embed = Embed(
             title="📋 Contas Registradas — Kingshot",
-            description=f"Total de contas cadastradas: **{len(players)}**",
+            description=f"Total de contas cadastradas neste servidor: **{len(players)}**",
             color=discord.Color.blue(),
         )
 
@@ -198,7 +232,7 @@ class KingshotCog(commands.GroupCog, name="kingshot"):
 
     # 5. Comando: Redeem Manual
     @app_commands.command(
-        name="redeem", description="Resgata manualmente um código de presente para todas as contas."
+        name="redeem", description="Resgata manualmente um código para as contas deste servidor."
     )
     @app_commands.describe(
         gift_code="O código de presente para resgatar",
@@ -210,15 +244,24 @@ class KingshotCog(commands.GroupCog, name="kingshot"):
         gift_code: str,
         player_id: str | None = None,
     ) -> None:
+        if not interaction.guild_id:
+            _ = await interaction.response.send_message(
+                "❌ Este comando só pode ser usado em servidores.", ephemeral=True
+            )
+            return
+
         clean_code = gift_code.strip()
         _ = await interaction.response.defer(thinking=True)
 
+        players = kingshot_store.get_players(interaction.guild_id)
         target_ids = [player_id.strip()] if player_id else None
-        results = await kingshot_service.redeem_all(clean_code, target_player_ids=target_ids)
+        results = await kingshot_service.redeem_all(
+            players, clean_code, target_player_ids=target_ids
+        )
 
         if not results:
             _ = await interaction.followup.send(
-                "⚠️ Nenhuma conta cadastrada para resgatar. "
+                "⚠️ Nenhuma conta cadastrada neste servidor para resgatar. "
                 + "Use `/kingshot add <player_id> <kingdom>` primeiro."
             )
             return
@@ -232,10 +275,11 @@ class KingshotCog(commands.GroupCog, name="kingshot"):
         if not message.guild or message.author.bot:
             return
 
-        config = kingshot_store.get_config()
+        guild_id = message.guild.id
+        config = kingshot_store.get_config(guild_id)
         redeem_channel_id = config.get("redeem_channel_id")
 
-        # Só monitora mensagens no canal configurado
+        # Só monitora mensagens no canal configurado deste servidor
         if not redeem_channel_id or message.channel.id != redeem_channel_id:
             return
 
@@ -249,17 +293,17 @@ class KingshotCog(commands.GroupCog, name="kingshot"):
             return
 
         candidate_code: str = str(matches[0])
-        players = kingshot_store.get_players()
+        players = kingshot_store.get_players(guild_id)
         if not players:
             return
 
         total_players = len(players)
         status_msg = await message.reply(
             f"🎁 Código `{candidate_code}` detectado! "
-            + f"Iniciando resgate automático para **{total_players}** contas..."
+            + f"Iniciando resgate automático para **{total_players}** contas deste servidor..."
         )
 
-        results = await kingshot_service.redeem_all(candidate_code)
+        results = await kingshot_service.redeem_all(players, candidate_code)
         if results:
             embed = build_results_embed(candidate_code, results)
             _ = await status_msg.edit(content=None, embed=embed)
