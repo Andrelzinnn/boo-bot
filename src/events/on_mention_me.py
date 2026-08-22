@@ -1,7 +1,6 @@
 from discord import Forbidden, HTTPException, Message, NotFound, Status
 
 from src.bot import bot
-from src.config.constants import GIF_URL, VIOLIN_GIF_URL, YAY_CAT_GIF_URL
 from src.config.settings import settings
 from src.utils.cooldown import is_on_cooldown
 from src.utils.logger import logger
@@ -15,14 +14,14 @@ async def on_message(message: Message) -> None:
     content_lower = message.content.lower()
     if content_lower in ["violin", "violino"] and not is_on_cooldown(message.channel.id):
         try:
-            _ = await message.reply(VIOLIN_GIF_URL)
+            _ = await message.reply(settings.violin_gif_url)
         except (Forbidden, HTTPException) as e:
             logger.warning(f"Falha ao enviar resposta de violino: {e}")
         return
 
     if "yay" in content_lower and not is_on_cooldown(message.channel.id):
         try:
-            _ = await message.reply(YAY_CAT_GIF_URL)
+            _ = await message.reply(settings.yay_gif_url)
         except (Forbidden, HTTPException) as e:
             logger.warning(f"Falha ao enviar resposta yay: {e}")
         return
@@ -41,7 +40,7 @@ async def on_message(message: Message) -> None:
 
                 if member and member.status not in [Status.online, Status.idle] and not is_on_cooldown(message.channel.id):
                     try:
-                        _ = await message.channel.send(GIF_URL)
+                        _ = await message.channel.send(settings.gif_unpresence_url)
                         logger.info(f"GIF de ausência enviado para #{message.channel.id}")
                     except (Forbidden, HTTPException) as e:
                         logger.warning(f"Falha ao enviar GIF de ausência: {e}")
