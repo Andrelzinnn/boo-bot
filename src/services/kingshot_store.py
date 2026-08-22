@@ -32,10 +32,10 @@ class KingshotStore:
                     old_players = raw_data.get("players", [])
                     return {
                         "guilds": {
-                          "default": {
-                              "config": old_config,
-                              "players": old_players,
-                          }
+                            "default": {
+                                "config": old_config,
+                                "players": old_players,
+                            }
                         }
                     }
 
@@ -83,10 +83,23 @@ class KingshotStore:
             guild_data["config"]["admin_role_id"] = admin_role_id
         self._write_file(data)
 
-    def get_players(self, guild_id: int | str) -> list[PlayerRecord]:
+    def get_players(self, guild_id: int | str | None = None) -> list[PlayerRecord]:
+        """Retorna os jogadores de um servidor ou todos os jogadores da base (deduplicados)."""
         data = self._read_file()
-        guild_data = self._get_or_create_guild(data, guild_id)
-        return guild_data["players"]
+        if guild_id is not None:
+            guild_data = self._get_or_create_guild(data, guild_id)
+            return guild_data["players"]
+
+        # Busca completa e geral em todas as guildas cadastradas
+        all_players: list[PlayerRecord] = []
+        seen_pids: set[str] = set()
+        for guild in data["guilds"].values():
+            for p in guild.get("players", []):
+                pid = str(p.get("player_id"))
+                if pid not in seen_pids:
+                    seen_pids.add(pid)
+                    all_players.append(p)
+        return all_players
 
     def add_player(
         self,
@@ -153,7 +166,7 @@ class KingshotStore:
         if updated:
             self._write_file(data)
 
-    def find_player(self, guild_id: int | str, query: str) -> PlayerRecord | None:
+    def find_player(self, query: str, guild_id: int | str | None = None) -> PlayerRecord | None:
         players = self.get_players(guild_id)
         query_clean = query.strip().lower()
         for p in players:

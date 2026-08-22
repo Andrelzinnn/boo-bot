@@ -232,7 +232,7 @@ class KingshotCog(commands.GroupCog, name="kingshot"):
 
     # 5. Comando: Redeem Manual
     @app_commands.command(
-        name="redeem", description="Resgata manualmente um código para as contas deste servidor."
+        name="redeem", description="Resgata manualmente um código para as contas cadastradas."
     )
     @app_commands.describe(
         gift_code="O código de presente para resgatar",
@@ -253,7 +253,8 @@ class KingshotCog(commands.GroupCog, name="kingshot"):
         clean_code = gift_code.strip()
         _ = await interaction.response.defer(thinking=True)
 
-        players = kingshot_store.get_players(interaction.guild_id)
+        # Busca completa de todos os jogadores da base de dados
+        players = kingshot_store.get_players()
         target_ids = [player_id.strip()] if player_id else None
         results = await kingshot_service.redeem_all(
             players, clean_code, target_player_ids=target_ids
@@ -261,7 +262,7 @@ class KingshotCog(commands.GroupCog, name="kingshot"):
 
         if not results:
             _ = await interaction.followup.send(
-                "⚠️ Nenhuma conta cadastrada neste servidor para resgatar. "
+                "⚠️ Nenhuma conta cadastrada na base de dados para resgatar. "
                 + "Use `/kingshot add <player_id> <kingdom>` primeiro."
             )
             return
@@ -293,14 +294,16 @@ class KingshotCog(commands.GroupCog, name="kingshot"):
             return
 
         candidate_code: str = str(matches[0])
-        players = kingshot_store.get_players(guild_id)
+
+        # Busca completa de todas as contas da base de dados para resgate geral
+        players = kingshot_store.get_players()
         if not players:
             return
 
         total_players = len(players)
         status_msg = await message.reply(
             f"🎁 Código `{candidate_code}` detectado! "
-            + f"Iniciando resgate automático para **{total_players}** contas deste servidor..."
+            + f"Iniciando resgate automático para **{total_players}** contas..."
         )
 
         results = await kingshot_service.redeem_all(players, candidate_code)
