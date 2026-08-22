@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     gif_unpresence_url: str = Field(default="https://klipy.com/gifs/cat-hello-cat-peek")
     violin_gif_url: str = Field(default="https://klipy.com/gifs/cat-instrumental-1")
     yay_gif_url: str = Field(default="https://klipy.com/gifs/cat-chinese-4")
-
+    cooldown_seconds: int = Field(default=10)
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         env_file=Path(__file__).resolve().parents[2] / ".env",
         env_file_encoding="utf-8",

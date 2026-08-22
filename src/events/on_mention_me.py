@@ -12,14 +12,14 @@ async def on_message(message: Message) -> None:
         return
 
     content_lower = message.content.lower()
-    if content_lower in ["violin", "violino"] and not is_on_cooldown(message.channel.id):
+    if content_lower in ["violin", "violino"] and not is_on_cooldown(message.channel.id, cooldown_seconds=settings.cooldown_seconds):
         try:
             _ = await message.reply(settings.violin_gif_url)
         except (Forbidden, HTTPException) as e:
             logger.warning(f"Falha ao enviar resposta de violino: {e}")
         return
 
-    if "yay" in content_lower and not is_on_cooldown(message.channel.id):
+    if "yay" in content_lower and not is_on_cooldown(message.channel.id, cooldown_seconds=settings.cooldown_seconds):
         try:
             _ = await message.reply(settings.yay_gif_url)
         except (Forbidden, HTTPException) as e:
@@ -38,7 +38,7 @@ async def on_message(message: Message) -> None:
                         logger.debug(f"Não foi possível obter o membro {settings.user_id}: {e}")
                         member = None
 
-                if member and member.status not in [Status.online, Status.idle] and not is_on_cooldown(message.channel.id):
+                if member and member.status not in [Status.online, Status.idle] and not is_on_cooldown(message.channel.id, cooldown_seconds=settings.cooldown_seconds):
                     try:
                         _ = await message.channel.send(settings.gif_unpresence_url)
                         logger.info(f"GIF de ausência enviado para #{message.channel.id}")
