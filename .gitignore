@@ -1,13 +1,18 @@
-.dev
+# Ambientes virtuais
+.venv/
+.dev/
+env/
+venv/
+
+# Variáveis de ambiente
 .env
-init.sh
-__pycache__
+.env.*
+!.env.example
+
+# Bytecode e caches
 __pycache__/
 *.py[cod]
 *$py.class
-.env
-.dev/
-.venv/
 .pytest_cache/
 .ruff_cache/
-docs
+.mypy_cache/

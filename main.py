@@ -18,6 +18,9 @@ if __name__ == "__main__":
             permissions=Permissions(send_messages=True, attach_files=True),
         )
         logger.info(url)
-        bot.run(settings.token)
+        try:
+            bot.run(settings.token)
+        except Exception as e:
+            logger.error(f"Falha ao iniciar o bot: {e}")
     else:
         logger.error("client_id e token são necessários")
