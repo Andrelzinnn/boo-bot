@@ -193,7 +193,7 @@ class KingshotCog(commands.GroupCog, name="kingshot"):
                 name=f"👑 {nick}", value=f"ID: `{pid}`\nReino: `{kid}`", inline=True
             )
 
-        _ = embed.set_footer(text="Boo Bot • Kingshot Redeemer")
+        _ = embed.set_footer(text="Boo Bot")
         _ = await interaction.response.send_message(embed=embed)
 
     # 5. Comando: Redeem Manual
