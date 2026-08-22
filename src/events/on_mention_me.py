@@ -13,21 +13,18 @@ async def on_message(message: Message) -> None:
         return
 
     content_lower = message.content.lower()
-
-    if content_lower in ["violin", "violino"]:
-        if not is_on_cooldown(message.channel.id):
-            try:
-                _ = await message.reply(VIOLIN_GIF_URL)
-            except (Forbidden, HTTPException) as e:
-                logger.warning(f"Falha ao enviar resposta de violino: {e}")
+    if content_lower in ["violin", "violino"] and not is_on_cooldown(message.channel.id):
+        try:
+            _ = await message.reply(VIOLIN_GIF_URL)
+        except (Forbidden, HTTPException) as e:
+            logger.warning(f"Falha ao enviar resposta de violino: {e}")
         return
 
-    if "yay" in content_lower:
-        if not is_on_cooldown(message.channel.id):
-            try:
-                _ = await message.reply(YAY_CAT_GIF_URL)
-            except (Forbidden, HTTPException) as e:
-                logger.warning(f"Falha ao enviar resposta yay: {e}")
+    if "yay" in content_lower and not is_on_cooldown(message.channel.id):
+        try:
+            _ = await message.reply(YAY_CAT_GIF_URL)
+        except (Forbidden, HTTPException) as e:
+            logger.warning(f"Falha ao enviar resposta yay: {e}")
         return
 
 
