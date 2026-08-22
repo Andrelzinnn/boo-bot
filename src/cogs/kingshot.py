@@ -253,11 +253,9 @@ class KingshotCog(commands.GroupCog, name="kingshot"):
         clean_code = gift_code.strip()
         _ = await interaction.response.defer(thinking=True)
 
-        # Busca completa de todos os jogadores da base de dados
-        players = kingshot_store.get_players()
         target_ids = [player_id.strip()] if player_id else None
         results = await kingshot_service.redeem_all(
-            clean_code, players=players, target_player_ids=target_ids
+            clean_code, target_player_ids=target_ids
         )
 
         if not results:
@@ -306,7 +304,7 @@ class KingshotCog(commands.GroupCog, name="kingshot"):
             + f"Iniciando resgate automático para **{total_players}** contas..."
         )
 
-        results = await kingshot_service.redeem_all(candidate_code, players=players)
+        results = await kingshot_service.redeem_all(candidate_code)
         if results:
             embed = build_results_embed(candidate_code, results)
             _ = await status_msg.edit(content=None, embed=embed)
