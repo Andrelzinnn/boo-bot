@@ -34,5 +34,3 @@ if __name__ == "__main__":
         logger.critical("Token do bot inválido. Verifique a variável TOKEN no arquivo .env.")
     except Exception as e:
         logger.critical(f"Erro fatal ao iniciar o bot: {e}")
-else:
-    logger.error("client_id e token são necessários")

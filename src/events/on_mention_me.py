@@ -42,7 +42,7 @@ async def on_message(message: Message) -> None:
                         logger.debug(f"Não foi possível obter o membro {settings.user_id}: {e}")
                         member = None
 
-                if member and member.status in [Status.online, Status.idle] and not is_on_cooldown(message.channel.id):
+                if member and member.status not in [Status.online, Status.idle] and not is_on_cooldown(message.channel.id):
                     try:
                         _ = await message.channel.send(GIF_URL)
                         logger.info(f"GIF de ausência enviado para #{message.channel.id}")
