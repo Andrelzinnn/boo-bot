@@ -18,6 +18,10 @@ class BooBot(commands.Bot):
     async def setup_hook(self) -> None:
         await self.load_extension("src.cogs.mentions")
         await self.load_extension("src.cogs.reactions")
+        await self.load_extension("src.cogs.general")
+        await self.load_extension("src.cogs.kingshot")
+
+        _ = await self.tree.sync()
         logger.info("Cogs carregados")
 
     async def on_ready(self) -> None:

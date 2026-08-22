@@ -25,6 +25,7 @@ async def runner() -> None:
     async with bot:
         await bot.start(settings.token)
 
+
 def main() -> None:
     try:
         asyncio.run(runner())
@@ -44,5 +45,6 @@ def main() -> None:
         logger.critical(f"Erro de conexão ou comunicação com o Discord: {e}")
         exit(1)
 
+
 if __name__ == "__main__":
-   main()
+    main()

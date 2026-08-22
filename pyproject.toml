@@ -1,0 +1,42 @@
+[project]
+name = "boo-bot"
+version = "0.1.0"
+description = "Discord bot modular construído em discord.py e Pydantic Settings"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "discord.py>=2.3.2",
+    "pydantic-settings>=2.0.0",
+    "aiohttp>=3.9.0",
+    "typing-extensions>=4.10.0",
+    "playwright>=1.40.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.4.0",
+    "mypy>=1.10.0",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle erros
+    "W",    # pycodestyle avisos
+    "F",    # pyflakes
+    "I",    # isort (ordenação automática de imports)
+    "UP",   # pyupgrade (sintaxe moderna do Python)
+    "BLE",  # flake8-blind-except
+    "ISC",  # flake8-implicit-str-concat
+]
+ignore = []
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+ignore_missing_imports = true
