@@ -2,7 +2,6 @@ from sys import exit
 
 from discord import Permissions, errors, utils
 
-import src.events.on_mention_me
 from src.bot import bot
 from src.config.settings import settings
 from src.utils.logger import logger
