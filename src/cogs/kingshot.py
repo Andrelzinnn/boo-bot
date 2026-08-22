@@ -15,9 +15,10 @@ def build_results_embed(gift_code: str, results: list[RedeemResult]) -> Embed:
     success_count = sum(1 for r in results if r.get("success"))
     total_count = len(results)
 
+    desc = f"**Código:** `{gift_code}`\n**Sucesso:** `{success_count}/{total_count}` contas"
     embed = Embed(
         title="🎁 Relatório de Resgate — Kingshot",
-        description=f"**Código:** `{gift_code}`\n**Sucesso:** `{success_count}/{total_count}` contas",
+        description=desc,
         color=discord.Color.green() if success_count > 0 else discord.Color.orange(),
     )
 
@@ -89,7 +90,7 @@ class KingshotCog(commands.GroupCog, name="kingshot"):
 
         role_info = f" Cargo permitido: {admin_role.mention}." if admin_role else ""
         _ = await interaction.response.send_message(
-            f"✅ Configuração concluída! Monitorando códigos no canal {channel.mention}.{role_info}",
+            f"✅ Configuração concluída! Monitorando códigos em {channel.mention}.{role_info}",
             ephemeral=True,
         )
 
@@ -124,17 +125,20 @@ class KingshotCog(commands.GroupCog, name="kingshot"):
         # Valida a conta no portal oficial do Kingshot
         is_valid, val_msg = await kingshot_service.validate_player(clean_id, clean_kid)
         if not is_valid:
-            await interaction.followup.send(
-                f"❌ **Falha na validação:** Não foi possível validar o Player ID `{clean_id}` no Reino `{clean_kid}`.\n"
-                f"Detalhe do site: *{val_msg}*\n"
-                "Verifique se o Player ID e o Reino foram digitados corretamente no jogo."
+            error_msg = (
+                f"❌ **Falha na validação:** Não foi possível validar o ID `{clean_id}` "
+                + f"no Reino `{clean_kid}`.\n"
+                + f"Detalhe do site: *{val_msg}*\n"
+                + "Verifique se o Player ID e o Reino foram digitados corretamente no jogo."
             )
+            _ = await interaction.followup.send(error_msg)
             return
 
         is_new = kingshot_store.add_player(clean_id, clean_kid, display_name, interaction.user.id)
         action_msg = "adicionada com sucesso" if is_new else "atualizada"
         await interaction.followup.send(
-            f"✅ Conta **{display_name}** (`ID: {clean_id}` | `Reino: {clean_kid}`) {action_msg} para resgate automático!"
+            f"✅ Conta **{display_name}** (`ID: {clean_id}` | `Reino: {clean_kid}`) "
+            + f"{action_msg} para resgate automático!"
         )
 
     # 3. Comando: Remove Player
@@ -151,8 +155,11 @@ class KingshotCog(commands.GroupCog, name="kingshot"):
 
         removed = kingshot_store.remove_player(query)
         if removed:
+            nick = removed.get("nickname", "Desconhecido")
+            pid = removed.get("player_id", "")
+            kid = removed.get("kingdom", "1")
             _ = await interaction.response.send_message(
-                f"🗑️ Conta **{removed.get('nickname')}** (`ID: {removed.get('player_id')}` | `Reino: {removed.get('kingdom', '1')}`) removida da lista."
+                f"🗑️ Conta **{nick}** (`ID: {pid}` | `Reino: {kid}`) removida da lista."
             )
         else:
             _ = await interaction.response.send_message(
@@ -211,12 +218,13 @@ class KingshotCog(commands.GroupCog, name="kingshot"):
 
         if not results:
             _ = await interaction.followup.send(
-                "⚠️ Nenhuma conta cadastrada para resgatar. Use `/kingshot add <player_id> <kingdom>` primeiro."
+                "⚠️ Nenhuma conta cadastrada para resgatar. "
+                + "Use `/kingshot add <player_id> <kingdom>` primeiro."
             )
             return
 
         embed = build_results_embed(clean_code, results)
-        await interaction.followup.send(embed=embed)
+        _ = await interaction.followup.send(embed=embed)
 
     # 6. Listener: Auto-Redeem em canal configurado
     @commands.Cog.listener()
@@ -236,17 +244,19 @@ class KingshotCog(commands.GroupCog, name="kingshot"):
             return
 
         # Regex para identificar potenciais gift codes (ex: KS15K, KINGSHOT2026, etc)
-        matches = re.findall(r"\b[A-Za-z0-9]{4,25}\b", message.content)
+        matches: list[str] = re.findall(r"\b[A-Za-z0-9]{4,25}\b", message.content)
         if not matches:
             return
 
-        candidate_code = matches[0]
+        candidate_code: str = str(matches[0])
         players = kingshot_store.get_players()
         if not players:
             return
 
+        total_players = len(players)
         status_msg = await message.reply(
-            f"🎁 Código `{candidate_code}` detectado! Iniciando resgate automático para **{len(players)}** contas..."
+            f"🎁 Código `{candidate_code}` detectado! "
+            + f"Iniciando resgate automático para **{total_players}** contas..."
         )
 
         results = await kingshot_service.redeem_all(candidate_code)

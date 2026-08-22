@@ -10,7 +10,7 @@ DEFAULT_DATA_PATH = Path(__file__).resolve().parents[2] / "data" / "kingshot_dat
 
 class KingshotStore:
     def __init__(self, data_path: Path = DEFAULT_DATA_PATH) -> None:
-        self.data_path = data_path
+        self.data_path: Path = data_path
         self._ensure_file_exists()
 
     def _ensure_file_exists(self) -> None:
@@ -27,13 +27,17 @@ class KingshotStore:
 
     def _read_file(self) -> KingshotData:
         try:
-            with open(self.data_path, "r", encoding="utf-8") as f:
+            with open(self.data_path, encoding="utf-8") as f:
                 data = json.load(f)
+                default_config: KingshotConfig = {
+                    "redeem_channel_id": None,
+                    "admin_role_id": None,
+                }
                 return {
-                    "config": data.get("config", {"redeem_channel_id": None, "admin_role_id": None}),
+                    "config": data.get("config", default_config),
                     "players": data.get("players", []),
                 }
-        except Exception as e:
+        except (OSError, json.JSONDecodeError, KeyError, TypeError) as e:
             logger.error(f"Erro ao ler banco de dados Kingshot ({self.data_path}): {e}")
             return {
                 "config": {"redeem_channel_id": None, "admin_role_id": None},
@@ -44,7 +48,7 @@ class KingshotStore:
         try:
             with open(self.data_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
-        except Exception as e:
+        except (OSError, TypeError) as e:
             logger.error(f"Erro ao salvar banco de dados Kingshot ({self.data_path}): {e}")
 
     def get_config(self) -> KingshotConfig:
