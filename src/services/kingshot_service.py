@@ -12,6 +12,7 @@ from playwright.async_api import (
     TimeoutError as PlaywrightTimeoutError,
 )
 
+from src.services.kingshot_store import kingshot_store
 from src.types.kingshot import PlayerRecord, RedeemResult
 from src.utils.logger import logger
 
@@ -185,15 +186,16 @@ class KingshotService:
 
     async def redeem_all(
         self,
-        players: list[PlayerRecord],
         gift_code: str,
+        players: list[PlayerRecord] | None = None,
         target_player_ids: list[str] | None = None,
     ) -> list[RedeemResult]:
-        """Resgata o código de presente para uma lista de contas de jogadores."""
+        """Resgata o código de presente para uma lista de contas (ou todas as cadastradas)."""
+        account_list = players if players is not None else kingshot_store.get_players()
         if target_player_ids:
-            players = [p for p in players if p["player_id"] in target_player_ids]
+            account_list = [p for p in account_list if p["player_id"] in target_player_ids]
 
-        if not players:
+        if not account_list:
             return []
 
         results: list[RedeemResult] = []
@@ -214,7 +216,7 @@ class KingshotService:
                 await page.goto(self.url, wait_until="domcontentloaded", timeout=15000)
                 await page.wait_for_selector("input[placeholder*='Player ID']", timeout=10000)
 
-                for player in players:
+                for player in account_list:
                     pid = player["player_id"]
                     kid = player.get("kingdom", "1")
                     nick = player.get("nickname") or pid
