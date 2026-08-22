@@ -10,5 +10,5 @@ else
   echo "Erro: Nenhum Ambiente virtual encontrado" >&2
   exit 1
 fi
-
+playwright install --with-deps chromium
 exec python3 "${BASE_DIR}/main.py"
