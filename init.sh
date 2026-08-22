@@ -11,4 +11,4 @@ else
   exit 1
 fi
 
-python3 "${BASE_DIR}/main.py"
+exec python3 "${BASE_DIR}/main.py"
